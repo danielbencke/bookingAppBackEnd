@@ -1,0 +1,92 @@
+service: bookings-api
+
+# Create an optimized package for our functions
+package:
+  individually: true
+
+plugins:
+  - serverless-bundle # Package our functions with Webpack
+  - serverless-offline
+  - serverless-dotenv-plugin # Load .env as environment variables
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  stage: prod
+  region:
+    eu-west-1
+
+    # These environment variables are made available to our functions
+  # under process.env.
+  environment:
+    tableName: bookings
+    indexName: GSI1-bookingDate-index
+
+  # 'iamRoleStatements' defines the permission policy for the Lambda function.
+  # In this case Lambda functions are granted with permissions to access DynamoDB.
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Scan
+        - dynamodb:Query
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+        - dynamodb:DescribeTable
+      Resource: "arn:aws:dynamodb:eu-west-1:*:*"
+
+functions:
+  # Defines an HTTP API endpoint that calls the main function in createBookings.js
+  # - path: url path is /bookings
+  # - method: POST request
+  # - authorizer: authenticate using the AWS IAM role
+  createBookings:
+    handler: createBookings.main
+    events:
+      - http:
+          path: bookings
+          method: post
+          cors: true
+          authorizer: aws_iam
+
+  getBookings:
+    # Defines an HTTP API endpoint that calls the main function in getBookings.js
+    # - path: url path is /bookings/{id}
+    # - method: GET request
+    handler: getBookings.main
+    events:
+      - http:
+          path: bookings/{id}
+          method: get
+          cors: true
+          authorizer: aws_iam
+
+  listFromUser:
+    # Defines an HTTP API endpoint that calls the main function in listFromUser.js
+    # - path: url path is /bookings
+    # - method: GET request
+    handler: listFromUser.main
+    events:
+      - http:
+          path: bookings
+          method: get
+          cors: true
+          authorizer: aws_iam
+
+  listFromChecking:
+    # Defines an HTTP API endpoint that calls the main function in listFromChecking.js
+    # - path: url path is /bookings/check
+    # - method: GET request
+    handler: listFromChecking.main
+    events:
+      - http:
+          path: bookings/check
+          method: get
+          cors: true
+          authorizer: aws_iam
+
+# Create our resources with separate CloudFormation templates
+resources:
+  # API Gateway Errors
+  - ${file(resources/api-gateway-errors.yml)}
